@@ -18,6 +18,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.world.WorldLoadEvent;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -43,6 +45,9 @@ public class AutoRestoreService implements Listener {
     private final FakeplayerMetadataStore metadataStore;
     private final FakeplayerConfig config;
     private final ActionManager actionManager;
+    private final FakeplayerReplenishManager replenishManager;
+    private final FakeplayerAutofishManager autofishManager;
+    private final FakeplayerSkinManager skinManager;
 
     private boolean restored = false;
     private final Set<UUID> restoredCreators = new HashSet<>();
@@ -52,12 +57,18 @@ public class AutoRestoreService implements Listener {
             FakeplayerManager fakeplayerManager,
             FakeplayerMetadataStore metadataStore,
             FakeplayerConfig config,
-            ActionManager actionManager
+            ActionManager actionManager,
+            FakeplayerReplenishManager replenishManager,
+            FakeplayerAutofishManager autofishManager,
+            FakeplayerSkinManager skinManager
     ) {
         this.fakeplayerManager = fakeplayerManager;
         this.metadataStore = metadataStore;
         this.config = config;
         this.actionManager = actionManager;
+        this.replenishManager = replenishManager;
+        this.autofishManager = autofishManager;
+        this.skinManager = skinManager;
 
         Bukkit.getPluginManager().registerEvents(this, Main.getInstance());
 
@@ -372,6 +383,33 @@ public class AutoRestoreService implements Listener {
         player.setInvulnerable(options.isInvulnerable());
         player.setCollidable(options.isCollidable());
         player.setCanPickupItems(options.isPickupItems());
+
+        // 恢复特性状态
+        var creator = getCreator(metadata);
+
+        // wolverine: 添加无限再生效果
+        if (options.isWolverine()) {
+            player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, PotionEffect.INFINITE_DURATION, 4, true, true));
+            log.fine("已恢复 wolverine 特性: " + player.getName());
+        }
+
+        // replenish: 启用自动补货
+        if (options.isReplenish()) {
+            replenishManager.setReplenish(player, true);
+            log.fine("已恢复 replenish 特性: " + player.getName());
+        }
+
+        // autofish: 启用自动钓鱼
+        if (options.isAutofish()) {
+            autofishManager.setAutofish(player, true);
+            log.fine("已恢复 autofish 特性: " + player.getName());
+        }
+
+        // skin: 应用皮肤
+        if (options.isSkin() && creator != null) {
+            skinManager.useDefaultSkin(creator, player);
+            log.fine("已恢复 skin 特性: " + player.getName());
+        }
     }
 
     /**

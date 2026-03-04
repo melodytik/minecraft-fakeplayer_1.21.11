@@ -1,6 +1,7 @@
 package io.github.hello09x.fakeplayer.core.manager;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import io.github.hello09x.devtools.command.exception.CommandException;
 import io.github.hello09x.devtools.core.utils.Exceptions;
@@ -60,10 +61,13 @@ public class FakeplayerManager {
     private final FakeplayerConfig config;
     private final FakeplayerMetadataStore metadataStore;
     private final ActionManager actionManager;
+    private final Provider<FakeplayerReplenishManager> replenishManager;
+    private final Provider<FakeplayerAutofishManager> autofishManager;
+    private final Provider<FakeplayerSkinManager> skinManager;
     private final ScheduledExecutorService lagMonitor;
 
     @Inject
-    public FakeplayerManager(NameManager nameManager, FakeplayerList playerList, FakeplayerFeatureManager featureManager, NMSBridge nms, FakeplayerConfig config, FakeplayerMetadataStore metadataStore, ActionManager actionManager) {
+    public FakeplayerManager(NameManager nameManager, FakeplayerList playerList, FakeplayerFeatureManager featureManager, NMSBridge nms, FakeplayerConfig config, FakeplayerMetadataStore metadataStore, ActionManager actionManager, Provider<FakeplayerReplenishManager> replenishManager, Provider<FakeplayerAutofishManager> autofishManager, Provider<FakeplayerSkinManager> skinManager) {
         this.nameManager = nameManager;
         this.playerList = playerList;
         this.featureManager = featureManager;
@@ -71,6 +75,9 @@ public class FakeplayerManager {
         this.config = config;
         this.metadataStore = metadataStore;
         this.actionManager = actionManager;
+        this.replenishManager = replenishManager;
+        this.autofishManager = autofishManager;
+        this.skinManager = skinManager;
 
         this.lagMonitor = Executors.newSingleThreadScheduledExecutor();
         this.lagMonitor.scheduleWithFixedDelay(() -> {
@@ -546,6 +553,20 @@ public class FakeplayerManager {
             metadata.getOptions().setCollidable(fp.getPlayer().isCollidable());
             metadata.getOptions().setPickupItems(fp.getPlayer().getCanPickupItems());
 
+            // 保存特性状态
+            var player = fp.getPlayer();
+            // wolverine: 检查是否有无限再生的药水效果
+            metadata.getOptions().setWolverine(
+                player.getActivePotionEffects().stream()
+                    .anyMatch(effect -> effect.getType().getName().equals("REGENERATION") && effect.isInfinite())
+            );
+            // replenish: 检查是否启用了自动补货
+            metadata.getOptions().setReplenish(replenishManager.get().isReplenish(player));
+            // autofish: 检查是否启用了自动钓鱼
+            metadata.getOptions().setAutofish(autofishManager.get().isAutofish(player));
+            // skin: 暂时不保存（检测复杂，默认为 false）
+            metadata.getOptions().setSkin(false);
+
             metadataStore.add(metadata);
             log.info("已保存假人元数据: " + fp.getName());
         } catch (Exception e) {
@@ -581,6 +602,20 @@ public class FakeplayerManager {
                 metadata.getOptions().setInvulnerable(fp.getPlayer().isInvulnerable());
                 metadata.getOptions().setCollidable(fp.getPlayer().isCollidable());
                 metadata.getOptions().setPickupItems(fp.getPlayer().getCanPickupItems());
+
+                // 更新特性状态
+                var player = fp.getPlayer();
+                // wolverine: 检查是否有无限再生的药水效果
+                metadata.getOptions().setWolverine(
+                    player.getActivePotionEffects().stream()
+                        .anyMatch(effect -> effect.getType().getName().equals("REGENERATION") && effect.isInfinite())
+                );
+                // replenish: 检查是否启用了自动补货
+                metadata.getOptions().setReplenish(replenishManager.get().isReplenish(player));
+                // autofish: 检查是否启用了自动钓鱼
+                metadata.getOptions().setAutofish(autofishManager.get().isAutofish(player));
+                // skin: 暂时不保存（检测复杂，默认为 false）
+                metadata.getOptions().setSkin(false);
 
                 metadataStore.save(allMetadata);
                 log.fine("已更新假人位置: " + fp.getName());

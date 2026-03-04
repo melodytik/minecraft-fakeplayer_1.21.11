@@ -185,6 +185,10 @@ public class Fakeplayer {
      */
     private void teleportToSpawnpoint(@NotNull Location to) {
         var from = this.player.getLocation();
+        // 保存目标朝向
+        float targetYaw = to.getYaw();
+        float targetPitch = to.getPitch();
+
         if (from.getWorld().equals(to.getWorld())) {
             // 如果生成世界等于目的世界, 则需要穿越一次维度才能获取刷怪能力
             var otherWorld = WorldUtils.getOtherWorld(from.getWorld());
@@ -203,6 +207,10 @@ public class Fakeplayer {
                         text(player.getName(), WHITE)
                 ).color(GRAY));
             }
+
+            // 强制恢复朝向（跨维度传送后可能被重置）
+            var finalLocation = new Location(to.getWorld(), to.getX(), to.getY(), to.getZ(), targetYaw, targetPitch);
+            player.teleport(finalLocation);
         });
     }
 

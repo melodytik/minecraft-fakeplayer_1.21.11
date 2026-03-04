@@ -60,5 +60,9 @@ public class FakeplayerMetadata {
         private boolean invulnerable;
         private boolean collidable;
         private boolean pickupItems;
+        private boolean wolverine;
+        private boolean replenish;
+        private boolean autofish;
+        private boolean skin;
     }
 }
